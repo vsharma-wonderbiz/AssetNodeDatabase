@@ -5,6 +5,8 @@
         public int Id { get; set; }
         public string Name { get; set; }
         public int? ParentAssetId { get; set; }
-        public List<AssetNodes> Children { get; set; } = new List<AssetNodes>();//to cretae the node to set the hirarchi
+        public List<AssetNodes> Children { get; set; } = new List<AssetNodes>();
+
+        public List<SignalNodeDto> Signals { get; set; } = new List<SignalNodeDto>();
     }
 }

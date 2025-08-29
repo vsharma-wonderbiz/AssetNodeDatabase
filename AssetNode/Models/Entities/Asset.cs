@@ -26,5 +26,9 @@ namespace AssetNode.Models.Entities
         public ICollection<Asset> Children { get; set; }
 
 
+        [JsonIgnore]
+        public ICollection<Signal> Signals {  get; set; }
+
+
     }
 }

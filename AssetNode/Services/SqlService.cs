@@ -27,7 +27,8 @@ namespace AssetNode.Services
                 Id = x.Id,
                 Name = x.Name,
                 ParentAssetId = x.ParentAssetId,
-                Children = new List<AssetNodes>()
+                Children = new List<AssetNodes>(),
+                Signals = new List<SignalNodeDto>()
             }).ToList();
 
           

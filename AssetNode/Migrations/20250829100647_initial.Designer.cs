@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AssetNode.Migrations
 {
     [DbContext(typeof(AssetDbContext))]
-    [Migration("20250826052445_initial")]
+    [Migration("20250829100647_initial")]
     partial class initial
     {
         /// <inheritdoc />
@@ -42,9 +42,45 @@ namespace AssetNode.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name")
+                        .IsUnique();
+
                     b.HasIndex("ParentAssetId");
 
                     b.ToTable("Assets");
+                });
+
+            modelBuilder.Entity("AssetNode.Models.Entities.Signal", b =>
+                {
+                    b.Property<int>("SignalId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SignalId"));
+
+                    b.Property<int>("AssetID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SignalName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ValueType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("SignalId");
+
+                    b.HasIndex("AssetID");
+
+                    b.HasIndex("SignalName")
+                        .IsUnique();
+
+                    b.ToTable("Signals");
                 });
 
             modelBuilder.Entity("AssetNode.Models.Entities.Asset", b =>
@@ -56,9 +92,22 @@ namespace AssetNode.Migrations
                     b.Navigation("ParentAsset");
                 });
 
+            modelBuilder.Entity("AssetNode.Models.Entities.Signal", b =>
+                {
+                    b.HasOne("AssetNode.Models.Entities.Asset", "asset")
+                        .WithMany("Signals")
+                        .HasForeignKey("AssetID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("asset");
+                });
+
             modelBuilder.Entity("AssetNode.Models.Entities.Asset", b =>
                 {
                     b.Navigation("Children");
+
+                    b.Navigation("Signals");
                 });
 #pragma warning restore 612, 618
         }

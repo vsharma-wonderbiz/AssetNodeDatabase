@@ -11,6 +11,7 @@ namespace AssetNode.Extensions
             services.AddScoped<IAssetStorage, AssetStroageService>();
             services.AddScoped<IJsonAssetInterface, JsonServices>();
             services.AddScoped<ISqlInterface, SqlService>();
+            services.AddScoped<ISignalInterface, SignalServices>();
             return services;
         }
     }
