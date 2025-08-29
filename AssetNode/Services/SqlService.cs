@@ -4,6 +4,7 @@ using AssetNode.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using AssetNode.Models.Dtos;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.AspNetCore.Mvc;
 
 
 namespace AssetNode.Services
@@ -58,21 +59,32 @@ namespace AssetNode.Services
                 
                 bool childExists = await _db.Assets
                     .AnyAsync(a => a.ParentAssetId == parentId && a.Name == dto.Name);
+                bool samePatentAsset = await _db.Assets.AnyAsync(a => a.Name == dto.Name);
+                bool IdExist = await _db.Assets.AnyAsync(a => a.Id == parentId);
+                if (!IdExist)
+                {
+                    throw new InvalidOperationException("No Such Id Exist");
+                }
                 if (childExists)
                 {
                     throw new InvalidOperationException("A child with this name already exists under the same parent.");
+                }if(samePatentAsset)
+                {
+                    throw new InvalidOperationException("Parent Cant be Its own Child");
                 }
             }
             else
             {
-              
+
                 bool rootExists = await _db.Assets
                     .AnyAsync(a => a.ParentAssetId == null && a.Name == dto.Name);
+                
                 if (rootExists)
                 {
                     throw new InvalidOperationException("A root with this name already exists.");
                 }
             }
+            
 
             var newAsset = new Asset
             {
@@ -185,139 +197,7 @@ namespace AssetNode.Services
 
 
 
-        //public async Task ImportFromFile(List<FileAssetDto> fileAssets)
-        //{
-        //    using var transaction = _db.Database.BeginTransaction();
-        //    try
-        //    {
-        //        // TempId -> DbId mapping
-        //        var tempToDbId = new Dictionary<int, int>();
-
-        //        // Step 1: Insert roots one by one to get their IDs immediately
-        //        var roots = fileAssets
-        //            .Where(a => a.TempParentId == null || a.TempParentId == 0)
-        //            .ToList();
-
-        //        foreach (var root in roots)
-        //        {
-        //            var newAsset = new Asset
-        //            {
-        //                Name = root.Name,
-        //                ParentAssetId = null
-        //            };
-
-        //            _db.Assets.Add(newAsset);
-        //            await _db.SaveChangesAsync(); // Save immediately to get the ID
-
-        //            // Map temp ID to generated DB ID
-        //            tempToDbId[root.TempId] = newAsset.Id;
-
-        //            Console.WriteLine($"Inserted root: TempId={root.TempId} -> DbId={newAsset.Id}, Name={root.Name}");
-        //        }
-
-        //        // Step 2: Insert children level by level
-        //        var remainingAssets = fileAssets
-        //            .Where(a => a.TempParentId != null && a.TempParentId != 0)
-        //            .ToList();
-
-        //        int maxIterations = fileAssets.Count; // Prevent infinite loops
-        //        int currentIteration = 0;
-
-        //        while (remainingAssets.Any() && currentIteration < maxIterations)
-        //        {
-        //            currentIteration++;
-        //            var assetsInsertedThisRound = new List<FileAssetDto>();
-
-        //            // Find assets whose parents have been inserted
-        //            foreach (var asset in remainingAssets.ToList())
-        //            {
-        //                if (asset.TempParentId.HasValue && tempToDbId.ContainsKey(asset.TempParentId.Value))
-        //                {
-        //                    var parentDbId = tempToDbId[asset.TempParentId.Value];
-
-        //                    var newAsset = new Asset
-        //                    {
-        //                        Name = asset.Name,
-        //                        ParentAssetId = parentDbId
-        //                    };
-
-        //                    _db.Assets.Add(newAsset);
-        //                    await _db.SaveChangesAsync(); // Save immediately to get the ID
-
-        //                    // Map temp ID to generated DB ID
-        //                    tempToDbId[asset.TempId] = newAsset.Id;
-
-        //                    Console.WriteLine($"Inserted child: TempId={asset.TempId} -> DbId={newAsset.Id}, Name={asset.Name}, ParentDbId={parentDbId}");
-
-        //                    assetsInsertedThisRound.Add(asset);
-        //                }
-        //            }
-
-        //            if (!assetsInsertedThisRound.Any())
-        //            {
-        //                // No progress made - there are orphaned assets
-        //                var orphanedAssets = remainingAssets.Select(a => $"TempId={a.TempId}, Name={a.Name}, TempParentId={a.TempParentId}");
-        //                var orphanedDetails = string.Join("; ", orphanedAssets);
-        //                throw new InvalidOperationException($"Cannot insert assets: {orphanedDetails}. Their parents don't exist or weren't processed yet.");
-        //            }
-
-        //            // Remove successfully inserted assets from remaining list
-        //            foreach (var inserted in assetsInsertedThisRound)
-        //            {
-        //                remainingAssets.Remove(inserted);
-        //            }
-        //        }
-
-        //        if (remainingAssets.Any())
-        //        {
-        //            throw new InvalidOperationException($"Failed to insert {remainingAssets.Count} assets due to circular dependencies or missing parents.");
-        //        }
-
-        //        await transaction.CommitAsync();
-        //        Console.WriteLine("Import completed successfully!");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        await transaction.RollbackAsync();
-        //        Console.WriteLine($"Import failed: {ex.Message}");
-        //        throw;
-        //    }
-        //}
-
-
-        //public async Task ImportFromFile(List<FileAssetDto> fileAssets)
-        //{
-        //    var tempToDbIdMap = new Dictionary<int, int>();
-
-        //    // Step 1: Insert roots first
-        //    var roots = fileAssets.Where(a => a.TempParentId == null || a.TempParentId == 0).ToList();
-        //    foreach (var root in roots)
-        //    {
-        //        var newAsset = new Asset { Name = root.Name, ParentAssetId = null };
-        //        _db.Assets.Add(newAsset);
-        //        await _db.SaveChangesAsync();
-        //        tempToDbIdMap[root.TempId] = newAsset.Id; // Map TempId -> Auto-generated DbId
-        //    }
-
-        //    // Step 2: Insert children iteratively
-        //    var remaining = fileAssets.Where(a => a.TempParentId != null && a.TempParentId != 0).ToList();
-        //    while (remaining.Any())
-        //    {
-        //        var canInsert = remaining.Where(a => tempToDbIdMap.ContainsKey(a.TempParentId.Value)).ToList();
-        //        if (!canInsert.Any()) break;
-
-        //        foreach (var asset in canInsert)
-        //        {
-        //            var parentDbId = tempToDbIdMap[asset.TempParentId.Value]; // Get correct parent DbId
-        //            var newAsset = new Asset { Name = asset.Name, ParentAssetId = parentDbId };
-        //            _db.Assets.Add(newAsset);
-        //            await _db.SaveChangesAsync();
-        //            tempToDbIdMap[asset.TempId] = newAsset.Id; // Map TempId -> Auto-generated DbId
-        //            remaining.Remove(asset);
-        //        }
-        //    }
-        //}
-
+       
 
         public async Task ImportFromFile(List<FileAssetDto> fileAssets)
         {
