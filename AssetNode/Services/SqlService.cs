@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using AssetNode.Models.Dtos;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel;
 
 
 namespace AssetNode.Services
@@ -21,6 +22,7 @@ namespace AssetNode.Services
         public async Task<List<AssetNodes>> GetJsonHierarchy()
         {
             var allAssets = await _db.Assets.ToListAsync();
+            var AllSignals = await _db.Signals.ToListAsync();
 
             var displaydata = allAssets.Select(x => new AssetNodes
             {
@@ -29,6 +31,15 @@ namespace AssetNode.Services
                 ParentAssetId = x.ParentAssetId,
                 Children = new List<AssetNodes>(),
                 Signals = new List<SignalNodeDto>()
+            }).ToList();
+
+            var displaySignals = AllSignals.Select(x => new SignalNodeDto
+            {
+                SignalId = x.SignalId,
+                SignalName = x.SignalName,
+                ValueType = x.ValueType,
+                Description = x.Description,
+                AssetID = x.AssetID
             }).ToList();
 
           
@@ -41,6 +52,17 @@ namespace AssetNode.Services
             }
             var tree = lookup[null].ToList();
 
+            //========AddingNewEventArgs signals to the assets================
+
+            var SignalLookup = displaySignals.ToLookup(x => x.AssetID);
+
+            foreach (var node in displaydata)
+            {
+                if (SignalLookup.Contains(node.Id))
+                {
+                    node.Signals.AddRange(SignalLookup[node.Id]);
+;                }
+            }
             return tree;
         }
 

@@ -49,7 +49,7 @@ namespace AssetNode.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSignal(int id, AddSignalDto dto)
+        public async Task<IActionResult> UpdateSignal(int id, UpdateSignalDto dto)
         {
             var updated = await _signal.UpdateSignalAsync(id, dto);
             if (updated == null)
@@ -58,6 +58,26 @@ namespace AssetNode.Controllers
             return Ok(updated); // Entity directly return ho rahi hai
         }
 
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteSignal(int id)
+        {
+            try
+            {
+                var reult = await _signal.DeleteSignal(id);
+                if (reult == null)
+                {
+                    return BadRequest(reult);
+                }
+                else
+                {
+                    return Ok(reult);
+                }
+            }catch(Exception ex)
+            {
+                return BadRequest(new { ex.Message });
+            }
+        }
+        
 
     }
 }

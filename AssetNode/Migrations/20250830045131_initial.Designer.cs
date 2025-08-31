@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AssetNode.Migrations
 {
     [DbContext(typeof(AssetDbContext))]
-    [Migration("20250829100647_initial")]
+    [Migration("20250830045131_initial")]
     partial class initial
     {
         /// <inheritdoc />

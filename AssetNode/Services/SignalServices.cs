@@ -48,23 +48,66 @@ namespace AssetNode.Services
         }
 
 
-        public async Task<Signal> UpdateSignalAsync(int id, AddSignalDto dto)
+        public async Task<Signal> UpdateSignalAsync(int id, UpdateSignalDto dto)
         {
             var signal = await _db.Signals.FindAsync(id);
             if (signal == null)
                 return null;
 
-            // Directly update
-            signal.SignalName = dto.SignalName;
-            signal.ValueType = dto.ValueType;
-            signal.Description = dto.Description;
-            signal.AssetID = dto.AssetId;
+           
+            if (!string.IsNullOrWhiteSpace(dto.SignalName) &&
+                dto.SignalName != "string" &&
+                dto.SignalName != signal.SignalName)
+            {
+                signal.SignalName = dto.SignalName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.ValueType) &&
+                dto.ValueType != "string" &&
+                dto.ValueType != signal.ValueType)
+            {
+                signal.ValueType = dto.ValueType;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Description) &&
+                dto.Description != "string" &&
+                dto.Description != signal.Description)
+            {
+                signal.Description = dto.Description;
+            }
+
+          
+            if (dto.AssetId.HasValue &&
+                dto.AssetId.Value > 0 &&
+                dto.AssetId.Value != signal.AssetID)
+            {
+                signal.AssetID = dto.AssetId.Value;
+            }
 
             await _db.SaveChangesAsync();
-
-            return signal; // Return the updated entity directly
+            return signal;
         }
 
+        public async Task<string> DeleteSignal(int id)
+        {
+            try
+            {
+                var node = await _db.Signals.FindAsync(id);
+
+                if (node == null)
+                {
+                    return "signal not found";
+                }
+
+                _db.Signals.Remove(node);
+                _db.SaveChangesAsync();
+
+                return "Node Deleted Sucessfully";
+            }catch(Exception ex)
+            {
+                return ex.Message;
+            }
+        }
 
     }
 }

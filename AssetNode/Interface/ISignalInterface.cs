@@ -8,6 +8,8 @@ namespace AssetNode.Interface
         public Task<List<SignalNodeDto>> GetSignals();
         public Task<Signal> AddSignal(AddSignalDto Dto);
 
-        public Task<Signal> UpdateSignalAsync(int id, AddSignalDto dto);
+        public Task<Signal> UpdateSignalAsync(int id, UpdateSignalDto dto);
+
+        public Task<string> DeleteSignal(int id);
     }
 }
