@@ -48,13 +48,26 @@ namespace AssetNode.Services
         }
 
 
-        public async Task<Signal> UpdateSignalAsync(int id, UpdateSignalDto dto)
+        public async Task<Signal> UpdateSignalAsync(int id, UpdateSignalDto dto)    
         {
+            
             var signal = await _db.Signals.FindAsync(id);
             if (signal == null)
                 return null;
 
-           
+            bool isExist = _db.Signals.Any(x =>
+        x.SignalName == dto.SignalName &&
+        x.AssetID == (dto.AssetId ?? signal.AssetID) &&  
+        x.SignalId != id);
+
+            if (isExist)
+            {
+                throw new InvalidOperationException("Signal already exists in this asset.");
+            }
+
+
+
+
             if (!string.IsNullOrWhiteSpace(dto.SignalName) &&
                 dto.SignalName != "string" &&
                 dto.SignalName != signal.SignalName)
@@ -83,6 +96,7 @@ namespace AssetNode.Services
             {
                 signal.AssetID = dto.AssetId.Value;
             }
+
 
             await _db.SaveChangesAsync();
             return signal;
