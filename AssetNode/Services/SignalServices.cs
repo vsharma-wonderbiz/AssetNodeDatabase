@@ -90,22 +90,33 @@ namespace AssetNode.Services
 
         public async Task<string> DeleteSignal(int id)
         {
+            if (id <= 0)
+            {
+                return "Invalid signal ID";
+            }
+
             try
             {
                 var node = await _db.Signals.FindAsync(id);
-
                 if (node == null)
                 {
-                    return "signal not found";
+                    return "Signal not found";
                 }
 
                 _db.Signals.Remove(node);
-                _db.SaveChangesAsync();
+                await _db.SaveChangesAsync();
 
-                return "Node Deleted Sucessfully";
-            }catch(Exception ex)
+                return "Signal deleted successfully";
+            }
+            catch (DbUpdateException ex)
             {
-                return ex.Message;
+                // Log the exception details (not shown here for brevity)
+                return "Failed to delete signal due to database error";
+            }
+            catch (Exception ex)
+            {
+                // Log the exception details
+                return "An unexpected error occurred while deleting the signal";
             }
         }
 
