@@ -12,6 +12,7 @@
 
             public DbSet<Asset> Assets { get; set; }
             public DbSet<Signal> Signals { get; set; }
+            public DbSet<User> Users { get; set; }
 
             protected override void OnModelCreating(ModelBuilder modelBuilder)
             {
@@ -33,6 +34,15 @@
                     .HasMany(e => e.Signals)
                     .WithOne(e => e.asset)
                     .HasForeignKey(a => a.AssetID);
-            }
+
+
+                modelBuilder.Entity<User>()
+                 .HasIndex(u => u.Username)
+                 .IsUnique();
+
+                modelBuilder.Entity<User>()
+                   .HasIndex(u => u.Email)
+                   .IsUnique();
+        }
         }
     }

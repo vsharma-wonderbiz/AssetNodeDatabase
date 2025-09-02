@@ -31,34 +31,27 @@ namespace AssetNode.Controllers
         }
         //post asset
         [HttpPost]
+
         public async Task<IActionResult> AddAsset([FromBody] SqladdAsset assetDto)
         {
-            //json addd asset
-            //var heirarchy = _storageservice.LoadHierarchy();
-            //try
-            //{
-            //    if (heirarchy == null)
-            //    {
-            //        heirarchy = new List<AssetNodes>();
-            //        _jsonAssetInterface.AddAsset(heirarchy, assetDto);
-            //        _storageservice.SaveHierarchy(heirarchy);
-            //    }
-            //    else
-            //    {
-            //        _jsonAssetInterface.AddAsset(heirarchy, assetDto);
-            //    }
-            //}catch (Exception ex)
-            //{
-            //    return BadRequest(new { message = ex.Message });
-            //}
+           
+            var authHeader = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
 
-            //    return Ok("Asset added successfully.");
-            //Database
+            if (string.IsNullOrEmpty(authHeader))
+            {
+                return Unauthorized(new { message = "Authorization header missing" });
+            }
+
+            Console.WriteLine($"Authorization Header: {authHeader}"); // Console logging
+                                                                      // ya phir
+                                                                      // _logger.LogInformation("Authorization Header: {authHeader}", authHeader);
+
             try
             {
                 var created = await _sqlinterface.AddAsset(assetDto);
                 return Ok(created);
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
@@ -69,12 +62,6 @@ namespace AssetNode.Controllers
         [HttpGet("heirarchy")]
         public  async Task<IActionResult> GetHierarchy()
         {
-            //var root = _jsonAssetInterface.GetJsonHierarchy();
-
-            //if (root == null || !root.Any())
-            //{
-            //    return Ok(new List<AssetNodes>());
-            //}
             var root = await _sqlinterface.GetJsonHierarchy();
             return Ok(root); // Returns full hierarchy as JSON
         }
@@ -84,12 +71,7 @@ namespace AssetNode.Controllers
         [HttpGet("Statistics")]
         public IActionResult GetCount()
         {
-            //int Totalcount = _jsonAssetInterface.DisplayCount();
-            //int Maxdepth = _jsonAssetInterface.MaxDepth();
-            //return Ok( new {
-            //    TotalNodes=Totalcount,
-            //     MaxDepth=Maxdepth
-            //});
+          
             int totalCount = _sqlinterface.DisplayCount().GetAwaiter().GetResult();
             int maxDepth = _sqlinterface.MaxDepth().GetAwaiter().GetResult();
 
@@ -102,54 +84,7 @@ namespace AssetNode.Controllers
         }
 
         [HttpPost("upload")]
-        //public async Task<IActionResult> UploadFile(IFormFile file)
-        //{
-        //    if (file == null || file.Length == 0)
-        //        return BadRequest("File is empty or missing.");
-
-        //    using var reader = new StreamReader(file.OpenReadStream());
-        //    string content = await reader.ReadToEndAsync();
-
-        //    try
-        //    {
-        //        // Deserialize to List<AssetNodes>
-        //        var uploadedNodes = JsonSerializer.Deserialize<List<AssetNodes>>(content, new JsonSerializerOptions
-        //        {
-        //            PropertyNameCaseInsensitive = true
-        //        });
-
-        //        if (uploadedNodes == null)
-        //        {
-        //            return BadRequest("Invalid file content.");
-        //        }
-
-        //        // Check if uploaded file is flat
-        //        bool isFlat = uploadedNodes.All(x => x.Children == null || x.Children.Count == 0);
-
-        //        if (isFlat)
-        //        {
-        //            // Build hierarchy if flat file
-        //            uploadedNodes = _jsonAssetInterface.ImportHeirarchyFromFile(uploadedNodes);
-        //        }
-
-        //        // Load existing hierarchy from storage
-        //        var existingHierarchy = _storageservice.LoadHierarchy();
-        //        if (existingHierarchy == null)
-        //            existingHierarchy = new List<AssetNodes>();
-
-        //        // Merge uploaded nodes into existing hierarchy
-        //        var mergedHierarchy = _jsonAssetInterface.MergeHeirarchy(existingHierarchy, uploadedNodes);
-
-        //        // Save merged hierarchy back to storage
-        //        _storageservice.SaveHierarchy(mergedHierarchy);
-
-        //        return Ok(mergedHierarchy);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(new { message = ex.Message });
-        //    }
-        //}
+        
         public async Task<IActionResult> ImportFromFile(IFormFile file)
         {
             try
@@ -192,18 +127,6 @@ namespace AssetNode.Controllers
         [Route("{Id}")]
         public IActionResult DeleteNode(int Id)
         {
-            //try
-            //{
-            //    var heirarchy = _storageservice.LoadHierarchy();
-            //    _jsonAssetInterface.DeleteNode(heirarchy, Id);
-
-            //}
-            //catch (Exception ex)
-            //{
-            //    return BadRequest(new { message = ex.Message });
-            //}
-            //return Ok($"Node with ID {Id} deleted successfully.");
-
             try
             {
                 _sqlinterface.DeleteNode(Id);

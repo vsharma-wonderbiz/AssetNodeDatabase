@@ -25,7 +25,7 @@ builder.Services.AddSwaggerGen();
 
 // Custom services registration
 builder.Services.AddCustomServices();
-
+builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 builder.Services.AddDbContext<AssetDbContext>(option =>
    option.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")).ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.CommandExecuting))
    );
@@ -63,6 +63,13 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AssetDbContext>();
     DbInitilaizer.Initilaize(db);
 }
+
+using var context = new AssetDbContext(
+      new DbContextOptionsBuilder<AssetDbContext>()
+        .UseSqlServer("Data Source=DESKTOP-7GIK05C;Initial Catalog=AssetDb;Integrated Security=True;Encrypt=False;Trust Server Certificate=True") // ya SQL Server connection
+        .Options);
+    
+SeedAdmin.Initialize(context);
 
 app.UseHttpsRedirection();
 
