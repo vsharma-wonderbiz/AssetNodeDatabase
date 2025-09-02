@@ -8,16 +8,16 @@ namespace AssetNode.Models.Entities
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int UserId { get; set; }   // Auto-generated ID
+        public int UserId { get; set; }   
 
         [Required]
         [MaxLength(50)]
-        public string Username { get; set; }  // Unique index will be in DbContext
+        public string Username { get; set; } 
 
         [Required]
         [MaxLength(100)]
         [EmailAddress]
-        public string Email { get; set; }     // Unique index will be in DbContext
+        public string Email { get; set; }     
 
         [Required]
         [MaxLength(255)]
@@ -25,6 +25,6 @@ namespace AssetNode.Models.Entities
 
         [Required]
         [MaxLength(20)]
-        public string Role { get; set; } = "User";  // Default value
+        public string Role { get; set; } = "User";  
     }
 }
