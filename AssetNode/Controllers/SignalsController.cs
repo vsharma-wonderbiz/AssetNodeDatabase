@@ -3,6 +3,7 @@ using AssetNode.Interface;
 using AssetNode.Models.Dtos;
 using AssetNode.Models.Entities;
 using AssetNode.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -34,10 +35,12 @@ namespace AssetNode.Controllers
             }
 
         }
-
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> AddSignal([FromBody] AddSignalDto dto)
         {
+            var authHeader = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
+            Console.WriteLine($"Add signal request with token: {authHeader}");
             try
             {
                 var newsignal = await _signal.AddSignal(dto);
@@ -64,18 +67,17 @@ namespace AssetNode.Controllers
         //    }// Entity directly return ho rahi hai
         //}
 
-
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateSignal(int id, UpdateSignalDto dto)
         {
+
+            var authHeader = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
+            Console.WriteLine($"Edit signal request with token: {authHeader}");
             try
             {
                 var updated = await _signal.UpdateSignalAsync(id, dto);
 
-                if (updated == null)
-                    return NotFound(new { message = "Signal not found." });
-
-                // Map entity → DTO before returning (good practice)
                 var response = new
                 {
                     updated.SignalId,
@@ -87,22 +89,18 @@ namespace AssetNode.Controllers
 
                 return Ok(response);
             }
-            catch (InvalidOperationException ex)
-            {
-                // Specific error: duplicate signal
-                return BadRequest(new { message = ex.Message });
-            }
             catch (Exception ex)
             {
-                // General error
-                return StatusCode(500, new { message = "Unexpected error occurred.", detail = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
-
+        [AllowAnonymous]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSignal(int id)
         {
+            var authHeader = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
+            Console.WriteLine($"Delete signal request with token: {authHeader}");
             try
             {
                 var reult = await _signal.DeleteSignal(id);

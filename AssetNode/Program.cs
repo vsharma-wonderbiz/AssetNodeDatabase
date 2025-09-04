@@ -9,11 +9,13 @@ using AssetNode.Services.Sql;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddControllersWithViews()
     .AddNewtonsoftJson(options =>
@@ -23,21 +25,21 @@ builder.Services.AddControllersWithViews()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Custom services registration
 builder.Services.AddCustomServices();
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
-builder.Services.AddDbContext<AssetDbContext>(option =>
-   option.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")).ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.CommandExecuting))
-   );
 
-// ✅ Correct CORS configuration
+builder.Services.AddDbContext<AssetDbContext>(option =>
+   option.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+   .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.CommandExecuting))
+);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(
-            "http://localhost:5173", // React dev server port
-            "http://localhost:5175", // If your frontend runs here
+            "http://localhost:5173",
+            "http://localhost:5175",
             "https://localhost:5173",
             "https://localhost:5175"
         )
@@ -47,16 +49,37 @@ builder.Services.AddCors(options =>
     });
 });
 
+//Authentication + JWT
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+            RoleClaimType = ClaimTypes.Role // Important! Matches the token's role claim
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("ManagerOrAdmin", policy => policy.RequireRole("Manager", "Admin"));
+});
+
 var app = builder.Build();
 
-// Configure middleware pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-
 
 using (var scope = app.Services.CreateScope())
 {
@@ -66,20 +89,18 @@ using (var scope = app.Services.CreateScope())
 
 using var context = new AssetDbContext(
       new DbContextOptionsBuilder<AssetDbContext>()
-        .UseSqlServer("Data Source=DESKTOP-7GIK05C;Initial Catalog=AssetDb;Integrated Security=True;Encrypt=False;Trust Server Certificate=True") // ya SQL Server connection
+        .UseSqlServer("Data Source=DESKTOP-7GIK05C;Initial Catalog=AssetDb;Integrated Security=True;Encrypt=False;Trust Server Certificate=True")
         .Options);
-    
+
 SeedAdmin.Initialize(context);
 
 app.UseHttpsRedirection();
 
-// ✅ Order matters: UseCors before Authorization
 app.UseCors("AllowFrontend");
 
-app.UseAuthorization();
 
-// Custom middlewares
-//app.UseRateLimitg();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

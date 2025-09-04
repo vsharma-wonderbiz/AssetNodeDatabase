@@ -8,10 +8,14 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Storage;
 using Newtonsoft.Json;
+using Microsoft.AspNetCore.Authorization;
+using Newtonsoft.Json.Linq;
+using System.Runtime.Intrinsics.X86;
 
 namespace AssetNode.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class AssetController : ControllerBase
     {
@@ -30,8 +34,8 @@ namespace AssetNode.Controllers
 
         }
         //post asset
-        [HttpPost]
-
+        [Authorize(Roles ="Admin")]
+        [HttpPost("Add")]
         public async Task<IActionResult> AddAsset([FromBody] SqladdAsset assetDto)
         {
            
@@ -42,9 +46,7 @@ namespace AssetNode.Controllers
                 return Unauthorized(new { message = "Authorization header missing" });
             }
 
-            Console.WriteLine($"Authorization Header: {authHeader}"); // Console logging
-                                                                      // ya phir
-                                                                      // _logger.LogInformation("Authorization Header: {authHeader}", authHeader);
+            Console.WriteLine($"Authorization Header: {authHeader}"); 
 
             try
             {
@@ -58,7 +60,7 @@ namespace AssetNode.Controllers
         }
 
 
-
+        [AllowAnonymous]
         [HttpGet("heirarchy")]
         public  async Task<IActionResult> GetHierarchy()
         {
@@ -67,7 +69,7 @@ namespace AssetNode.Controllers
         }
 
 
-
+        [AllowAnonymous]
         [HttpGet("Statistics")]
         public IActionResult GetCount()
         {
@@ -83,34 +85,88 @@ namespace AssetNode.Controllers
 
         }
 
-        [HttpPost("upload")]
-        
-        public async Task<IActionResult> ImportFromFile(IFormFile file)
-        {
-            try
+            [Authorize(Roles = "Admin")]
+            [HttpPost("upload")]
+            public async Task<IActionResult> ImportFromFile(IFormFile file)
             {
-                if (file == null || file.Length == 0)
-                    return BadRequest(new { error = "No file uploaded." });
+                var authHeader = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
+                Console.WriteLine($"upload file request with token: {authHeader}");
+           
+                //try
+                //{
+                //    if (file == null || file.Length == 0)
+                //        return BadRequest(new { error = "No file uploaded." });
 
-                List<FileAssetDto> assets = new List<FileAssetDto>();
-                using (var reader = new StreamReader(file.OpenReadStream()))
+                //    List<FileAssetDto> assets = new List<FileAssetDto>();
+                //    using (var reader = new StreamReader(file.OpenReadStream()))
+                //    {
+                //        string content = await reader.ReadToEndAsync();
+                //        assets = JsonConvert.DeserializeObject<List<FileAssetDto>>(content);
+                //    }
+
+                //    await _sqlinterface.ImportFromFile(assets);
+                //    return Ok(new { message = "File imported successfully." });
+                //}
+                //catch (Exception ex)
+                //{
+                //    return BadRequest(new { error = ex.Message });
+                //}
+                if(file==null || file.Length == 0)
                 {
-                    string content = await reader.ReadToEndAsync();
-                    assets = JsonConvert.DeserializeObject<List<FileAssetDto>>(content);
+                    return BadRequest("File is Empty or not uploaded");
                 }
 
-                await _sqlinterface.ImportFromFile(assets);
-                return Ok(new { message = "File imported successfully." });
+                string content;
+                using(var Reader=new StreamReader(file.OpenReadStream()))
+                {
+                    content = await Reader.ReadToEndAsync();
+                }
+
+                try
+                {
+                    JArray.Parse(content);
+                }
+                catch(JsonReaderException ex)
+                {
+                    return BadRequest($"Invalid format: {ex.Message}");
+                }
+                List<FileAssetDto> assets;
+                try
+                {
+                    assets = JsonConvert.DeserializeObject<List<FileAssetDto>>(content);
+                }
+                catch(Exception ex)
+                {
+                    return BadRequest($"faliure {ex.Message}");
+                }
+
+            
+                if (assets == null || !assets.Any())
+                    return BadRequest("No valid assets found in the file.");
+
+            
+                foreach (var asset in assets)
+                {
+                    if (asset == null)
+                        return BadRequest("One of the asset records is null.");
+
+                    if (string.IsNullOrWhiteSpace(asset.Name))
+                        return BadRequest($"Asset with Id {asset.TempId} has an empty Name.");
+
+                    if (asset.TempId <= 0)
+                        return BadRequest("Asset Id must be greater than 0.");
+                }
+
+                // ✅ Business validations will be in Service Layer
+                 await _sqlinterface.ImportFromFile(assets);
+
+                return Ok(new { message = "Import successful" });
+
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-        }
 
 
 
-
+        [AllowAnonymous]
         [HttpGet("download")]
         public IActionResult DownloadFile()
         {
@@ -123,13 +179,16 @@ namespace AssetNode.Controllers
         }
 
 
-        [HttpDelete]
-        [Route("{Id}")]
-        public IActionResult DeleteNode(int Id)
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("{id}")]
+        public IActionResult DeleteNode(int id)
         {
+            var authHeader = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
+            Console.WriteLine($"Delete node request with token: {authHeader}");
+
             try
             {
-                _sqlinterface.DeleteNode(Id);
+                _sqlinterface.DeleteNode(id);
                 return Ok(new { message = "Asset deleted successfully." });
             }
             catch (Exception ex)
@@ -137,5 +196,6 @@ namespace AssetNode.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
     }
 }

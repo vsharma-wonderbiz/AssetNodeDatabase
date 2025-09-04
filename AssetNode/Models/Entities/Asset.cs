@@ -16,7 +16,7 @@ namespace AssetNode.Models.Entities
         public string Name { get; set; }
 
 
-        public int? ParentAssetId { get; set; } // null means parent directly
+        public int? ParentAssetId { get; set; } 
 
         [ForeignKey("ParentAssetId")]
         [JsonIgnore]
