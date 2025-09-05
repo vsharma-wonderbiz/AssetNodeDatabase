@@ -11,6 +11,9 @@ using Newtonsoft.Json;
 using Microsoft.AspNetCore.Authorization;
 using Newtonsoft.Json.Linq;
 using System.Runtime.Intrinsics.X86;
+using Microsoft.EntityFrameworkCore.Query.Internal;
+using System.Text.Json.Nodes;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace AssetNode.Controllers
 {
@@ -85,86 +88,214 @@ namespace AssetNode.Controllers
 
         }
 
-            [Authorize(Roles = "Admin")]
-            [HttpPost("upload")]
-            public async Task<IActionResult> ImportFromFile(IFormFile file)
+        [AllowAnonymous]
+        [HttpPost("upload")]
+        //public async Task<IActionResult> ImportFromFile(IFormFile file)
+        //{
+        //    var authHeader = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
+        //    Console.WriteLine($"upload file request with token: {authHeader}");
+
+        //    //try
+        //    //{
+        //    //    if (file == null || file.Length == 0)
+        //    //        return BadRequest(new { error = "No file uploaded." });
+
+        //    //    List<FileAssetDto> assets = new List<FileAssetDto>();
+        //    //    using (var reader = new StreamReader(file.OpenReadStream()))
+        //    //    {
+        //    //        string content = await reader.ReadToEndAsync();
+        //    //        assets = JsonConvert.DeserializeObject<List<FileAssetDto>>(content);
+        //    //    }
+
+        //    //    await _sqlinterface.ImportFromFile(assets);
+        //    //    return Ok(new { message = "File imported successfully." });
+        //    //}
+        //    //catch (Exception ex)
+        //    //{
+        //    //    return BadRequest(new { error = ex.Message });
+        //    //}
+        //    if(file==null || file.Length == 0)
+        //    {
+        //        return BadRequest("File is Empty or not uploaded");
+        //    }
+
+        //    string content;
+        //    using(var Reader=new StreamReader(file.OpenReadStream()))
+        //    {
+        //        content = await Reader.ReadToEndAsync();
+        //    }
+
+        //    try
+        //    {
+        //        JArray.Parse(content);
+        //    }
+        //    catch(JsonReaderException ex)
+        //    {
+        //        return BadRequest($"Invalid format: {ex.Message}");
+        //    }
+        //    List<FileAssetDto> assets;
+        //    try
+        //    {
+        //        assets = JsonConvert.DeserializeObject<List<FileAssetDto>>(content);
+        //    }
+        //    catch(Exception ex)
+        //    {
+        //        return BadRequest($"faliure {ex.Message}");
+        //    }
+
+
+        //    if (assets == null || !assets.Any())
+        //        return BadRequest("No valid assets found in the file.");
+
+
+        //    foreach (var asset in assets)
+        //    {
+        //        if (asset == null)
+        //            return BadRequest("One of the asset records is null.");
+
+        //        if (string.IsNullOrWhiteSpace(asset.Name))
+        //            return BadRequest($"Asset with Id {asset.TempId} has an empty Name.");
+
+        //        if (asset.TempId <= 0)
+        //            return BadRequest("Asset Id must be greater than 0.");
+        //    }
+
+        //    // ✅ Business validations will be in Service Layer
+        //     await _sqlinterface.ImportFromFile(assets);
+
+        //    return Ok(new { message = "Import successful" });
+
+        //}
+        public async Task<IActionResult> ImportFromFile(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
             {
-                var authHeader = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
-                Console.WriteLine($"upload file request with token: {authHeader}");
-           
-                //try
-                //{
-                //    if (file == null || file.Length == 0)
-                //        return BadRequest(new { error = "No file uploaded." });
-
-                //    List<FileAssetDto> assets = new List<FileAssetDto>();
-                //    using (var reader = new StreamReader(file.OpenReadStream()))
-                //    {
-                //        string content = await reader.ReadToEndAsync();
-                //        assets = JsonConvert.DeserializeObject<List<FileAssetDto>>(content);
-                //    }
-
-                //    await _sqlinterface.ImportFromFile(assets);
-                //    return Ok(new { message = "File imported successfully." });
-                //}
-                //catch (Exception ex)
-                //{
-                //    return BadRequest(new { error = ex.Message });
-                //}
-                if(file==null || file.Length == 0)
+                return BadRequest(new
                 {
-                    return BadRequest("File is Empty or not uploaded");
-                }
-
-                string content;
-                using(var Reader=new StreamReader(file.OpenReadStream()))
-                {
-                    content = await Reader.ReadToEndAsync();
-                }
-
-                try
-                {
-                    JArray.Parse(content);
-                }
-                catch(JsonReaderException ex)
-                {
-                    return BadRequest($"Invalid format: {ex.Message}");
-                }
-                List<FileAssetDto> assets;
-                try
-                {
-                    assets = JsonConvert.DeserializeObject<List<FileAssetDto>>(content);
-                }
-                catch(Exception ex)
-                {
-                    return BadRequest($"faliure {ex.Message}");
-                }
-
-            
-                if (assets == null || !assets.Any())
-                    return BadRequest("No valid assets found in the file.");
-
-            
-                foreach (var asset in assets)
-                {
-                    if (asset == null)
-                        return BadRequest("One of the asset records is null.");
-
-                    if (string.IsNullOrWhiteSpace(asset.Name))
-                        return BadRequest($"Asset with Id {asset.TempId} has an empty Name.");
-
-                    if (asset.TempId <= 0)
-                        return BadRequest("Asset Id must be greater than 0.");
-                }
-
-                // ✅ Business validations will be in Service Layer
-                 await _sqlinterface.ImportFromFile(assets);
-
-                return Ok(new { message = "Import successful" });
-
+                    errors = new[] { new { field = "file", message = "File is empty or not uploaded" } }
+                });
             }
 
+            string content;
+            using (var reader = new StreamReader(file.OpenReadStream()))
+            {
+                content = await reader.ReadToEndAsync();
+            }
 
+            JArray jsonArray;
+            try
+            {
+                jsonArray = JArray.Parse(content);
+            }
+            catch (JsonReaderException)
+            {
+                return BadRequest(new
+                {
+                    errors = new[] { new { field = "file", message = "Invalid JSON format" } }
+                });
+            }
+
+            var allowedKeys = new HashSet<string> { "Id", "Name", "ParentId" };
+            var validationErrors = new List<object>();
+
+            for (int i = 0; i < jsonArray.Count; i++)
+            {
+                var obj = (JObject)jsonArray[i];
+
+                foreach (var property in obj.Properties())
+                {
+                    string key = property.Name;
+                    if (!allowedKeys.Contains(key))
+                    {
+                        validationErrors.Add(new
+                        {
+                            index = i,
+                            field = key,
+                            message = $"At Record :{i+1} -> Invalid key name '{key}'"
+                        });
+                    }
+                }
+
+               
+                if (obj.TryGetValue("Id", out JToken idToken))
+                {
+                    if (!int.TryParse(idToken.ToString(), out int id) || id <= 0)
+                    {
+                        validationErrors.Add(new
+                        {
+                            index = i,
+                            field = "Id",
+                            message = "Id must be a positive integer"
+                        });
+                    }
+                }
+                else
+                {
+                    validationErrors.Add(new { index = i, field = "Id", message = "Missing required key 'Id'" });
+                }
+
+                
+                if (obj.TryGetValue("Name", out JToken nameToken))
+                {
+                    string name = nameToken.ToString();
+
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        validationErrors.Add(new
+                        {
+                            index = i,
+                            field = "Name",
+                            message = $"At Reacord :{i+1} -> Name Cannot be Empty"
+                        });
+                    }
+                    else if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9]+$"))
+                    {
+                        validationErrors.Add(new
+                        {
+                            index = i,
+                            field = "Name",
+                            message = $"At Record:{i+1} - >Name can only contain letters and numbers (no spaces or special characters)"
+                        });
+                    }                                   
+                }
+                else
+                {
+                    validationErrors.Add(new { index = i, field = "Name", message = "Missing required key 'Name'" });
+                }
+
+               
+                if (obj.TryGetValue("ParentId", out JToken parentIdToken))
+                {
+                    if (!parentIdToken.Type.Equals(JTokenType.Null))
+                    {
+                        if (!int.TryParse(parentIdToken.ToString(), out _))
+                        {
+                            validationErrors.Add(new
+                            {
+                                index = i,
+                                field = "ParentId",
+                                message = $"At Record :{i} -> ParentId must be an integer or null"
+                            });
+                        }
+                    }
+                }   
+                else
+                {
+                    validationErrors.Add(new { index = i, field = "ParentId", message = "Missing required key 'ParentId'" });
+                }
+            }
+
+            
+            if (validationErrors.Any())
+            {
+                return BadRequest(new { errors = validationErrors });
+            }
+
+            var assets = jsonArray.ToObject<List<FileAssetDto>>();
+            await _sqlinterface.ImportFromFile(assets);
+
+            return Ok(new { message = "File imported successfully" });
+        }
 
         [AllowAnonymous]
         [HttpGet("download")]
