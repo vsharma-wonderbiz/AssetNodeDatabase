@@ -1,19 +1,21 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using AssetNode.Models.Dtos;
-using AssetNode.Data;
-using AssetNode.Services;
+﻿using AssetNode.Data;
 using AssetNode.Interface;
-using System.Text.Json;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
+using AssetNode.Models.Dtos;
+using AssetNode.Models.Entities;
+using AssetNode.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Newtonsoft.Json;
-using Microsoft.AspNetCore.Authorization;
 using Newtonsoft.Json.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
-using Microsoft.EntityFrameworkCore.Query.Internal;
+using System.Text.Json;
 using System.Text.Json.Nodes;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using System.Threading.Tasks;
 
 namespace AssetNode.Controllers
 {
@@ -27,6 +29,7 @@ namespace AssetNode.Controllers
         private readonly IAssetStorage _storageservice;
         private readonly IWebHostEnvironment _env;
         private readonly ISqlInterface _sqlinterface;
+        
 
         public AssetController(IJsonAssetInterface jsonAssetInterface,IAssetStorage storage, IWebHostEnvironment env, ISqlInterface sqlinterface)
         {
@@ -327,6 +330,24 @@ namespace AssetNode.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+
+        ////[HttpGet]
+        ////public async Task<ActionResult<IEnumerable<HitoryLog>>> GetAllHistoryLogs()
+        //{
+        //    try
+        //    {
+        //        var logs = await _context.HitoryLogs
+        //            .OrderByDescending(h => h.ChangedAt)
+        //            .ToListAsync();
+
+        //        return Ok(logs);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, $"Error: {ex.Message}");
+        //    }
+        //}
 
     }
 }

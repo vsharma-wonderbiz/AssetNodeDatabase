@@ -128,24 +128,28 @@ namespace AssetNode.Services
 
         public async Task DeleteNode(int id)
         {
-            var node = _db.Assets.FirstOrDefault(a => a.Id == id);
+            var node = await _db.Assets.FirstOrDefaultAsync(a => a.Id == id);
             if (node == null)
                 throw new Exception($"Id {id} does not exist");
 
-            // Remove children recursively
-            RemoveChildren(node);
-
+            await RemoveChildrenAsync(node);
             _db.Assets.Remove(node);
-            _db.SaveChanges();
+
+            // Single SaveChanges call - no connection issues
+            await _db.SaveChangesAsync();
         }
 
-        private void RemoveChildren(Asset node)
+        private async Task RemoveChildrenAsync(Asset node)
         {
-            var children = _db.Assets.Where(a => a.ParentAssetId == node.Id).ToList();
+            var children = await _db.Assets
+                .Where(a => a.ParentAssetId == node.Id)
+                .ToListAsync();
+
             foreach (var child in children)
             {
-                RemoveChildren(child);
+                await RemoveChildrenAsync(child);
                 _db.Assets.Remove(child);
+                // NO SaveChanges here - just mark for deletion
             }
         }
 
