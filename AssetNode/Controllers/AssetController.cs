@@ -331,23 +331,24 @@ namespace AssetNode.Controllers
             }
         }
 
+        [AllowAnonymous]
+        [HttpGet]
+        [Route("Logs")]
+        public async Task<IActionResult> GetAllHistoryLogs()
+        {
+            try
+            {
+                var logs = await _sqlinterface.GetLogs();
+               logs=logs.OrderByDescending(h => h.ChangedAt).ToList();
 
-        ////[HttpGet]
-        ////public async Task<ActionResult<IEnumerable<HitoryLog>>> GetAllHistoryLogs()
-        //{
-        //    try
-        //    {
-        //        var logs = await _context.HitoryLogs
-        //            .OrderByDescending(h => h.ChangedAt)
-        //            .ToListAsync();
-
-        //        return Ok(logs);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, $"Error: {ex.Message}");
-        //    }
-        //}
+                Console.Write(logs + "the logs from the service layer");
+                return Ok(logs);
+    }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error: {ex.Message}");
+}
+        }
 
     }
 }

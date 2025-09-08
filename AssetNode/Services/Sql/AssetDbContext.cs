@@ -32,8 +32,8 @@ namespace AssetNode.Services.Sql
             modelBuilder.Entity<Asset>()
                 .HasOne(e => e.ParentAsset)
                 .WithMany(a => a.Children)
-                .HasForeignKey(a => a.ParentAssetId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .HasForeignKey(a => a.ParentAssetId);
+                //.OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Asset>()
                 .HasMany(e => e.Signals)

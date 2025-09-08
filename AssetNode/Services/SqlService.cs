@@ -6,23 +6,27 @@ using AssetNode.Models.Dtos;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
+using Microsoft.EntityFrameworkCore.Internal;
 
 
 namespace AssetNode.Services
 {
     public class SqlService :ISqlInterface
     {
+        private readonly IDbContextFactory<AssetDbContext> _dbfactory;
         private readonly AssetDbContext _db;
 
-        public SqlService(AssetDbContext db)
+        public SqlService(AssetDbContext db, IDbContextFactory<AssetDbContext> dbfactory)
         {
             _db = db;
+            _dbfactory = dbfactory;
         }
         
         public async Task<List<AssetNodes>> GetJsonHierarchy()
         {
-            var allAssets = await _db.Assets.ToListAsync();
-            var AllSignals = await _db.Signals.ToListAsync();
+            using var db = _dbfactory.CreateDbContext();
+            var allAssets = await db.Assets.ToListAsync();
+            var AllSignals = await db.Signals.ToListAsync();
 
             var displaydata = allAssets.Select(x => new AssetNodes
             {
@@ -126,32 +130,70 @@ namespace AssetNode.Services
 
 
 
+        //public async Task DeleteNode(int id)
+        //{
+        //    var node = await _db.Assets.FirstOrDefaultAsync(a => a.Id == id);
+        //    if (node == null)
+        //        throw new Exception($"Id {id} does not exist");
+
+        //    await RemoveChildrenAsync(node);
+        //    _db.Assets.Remove(node);
+
+        //    // Single SaveChanges call - no connection issues
+        //    await _db.SaveChangesAsync();
+        //}
+
+        //private async Task RemoveChildrenAsync(Asset node)
+        //{
+        //    var children = await _db.Assets
+        //        .Where(a => a.ParentAssetId == node.Id)
+        //        .ToListAsync();
+
+        //    foreach (var child in children)
+        //    {
+        //        await RemoveChildrenAsync(child);
+        //        _db.Assets.Remove(child);
+        //        // NO SaveChanges here - just mark for deletion
+        //    }
+        //}
+
+
         public async Task DeleteNode(int id)
         {
-            var node = await _db.Assets.FirstOrDefaultAsync(a => a.Id == id);
+            using var db = _dbfactory.CreateDbContext();
+
+            var node = await db.Assets.FirstOrDefaultAsync(a => a.Id == id);
             if (node == null)
                 throw new Exception($"Id {id} does not exist");
 
-            await RemoveChildrenAsync(node);
-            _db.Assets.Remove(node);
+            var allNodes = new List<Asset>();
+            await CollectChildrenAsync(db, node, allNodes);
+            allNodes.Add(node);
 
-            // Single SaveChanges call - no connection issues
-            await _db.SaveChangesAsync();
+            foreach (var asset in allNodes)
+            {
+                db.Attach(asset);
+                db.Remove(asset);
+            }
+
+            await db.SaveChangesAsync();
         }
 
-        private async Task RemoveChildrenAsync(Asset node)
+        private async Task CollectChildrenAsync(AssetDbContext db, Asset node, List<Asset> result)
         {
-            var children = await _db.Assets
+            var children = await db.Assets
+                .AsNoTracking()
                 .Where(a => a.ParentAssetId == node.Id)
                 .ToListAsync();
 
             foreach (var child in children)
             {
-                await RemoveChildrenAsync(child);
-                _db.Assets.Remove(child);
-                // NO SaveChanges here - just mark for deletion
+                result.Add(child);
+                await CollectChildrenAsync(db, child, result);
             }
         }
+
+
 
 
         public async Task<int> DisplayCount()
@@ -358,6 +400,37 @@ namespace AssetNode.Services
                 {
                     Console.WriteLine($"TempId: {orphan.TempId}, Name: {orphan.Name}, TempParentId: {orphan.TempParentId} (Parent not found)");
                 }
+            }
+        }
+
+
+        public async Task<List<HitoryLog>> GetLogs()
+        {
+            try
+            {
+                var Logs =await  _db.HitoryLogs.ToListAsync();
+                if (!Logs.Any())
+                {
+                    throw new Exception("No Logs Present");
+                }
+                var DisplayLogs = Logs.Select(x => new HitoryLog
+                {
+                    HistoryId = x.HistoryId,
+                    TableName = x.TableName,
+                    RecordId = x.RecordId,
+                    Action = x.Action,
+                    Description = x.Description,
+                    ChangedBy = x.ChangedBy,
+                    ChangedAt = x.ChangedAt
+                }).ToList();
+
+                Console.Write(DisplayLogs + "the logs from the service layer");
+
+                return DisplayLogs;
+            }
+            catch (Exception ex)
+            {
+                 throw new Exception("Error fetching logs: " + ex.Message);
             }
         }
 

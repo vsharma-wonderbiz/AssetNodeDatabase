@@ -14,5 +14,6 @@ namespace AssetNode.Interface
         public Task<int> MaxDepth();
 
         public Task ImportFromFile(List<FileAssetDto> fileAssets);
+        public Task<List<HitoryLog>> GetLogs();
     }
 }

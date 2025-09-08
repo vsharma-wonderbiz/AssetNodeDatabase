@@ -33,6 +33,10 @@ builder.Services.AddDbContext<AssetDbContext>(option =>
    .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.CommandExecuting))
 );
 
+builder.Services.AddDbContextFactory<AssetDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")),ServiceLifetime.Scoped);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -89,7 +93,7 @@ using (var scope = app.Services.CreateScope())
 
 using var context = new AssetDbContext(
       new DbContextOptionsBuilder<AssetDbContext>()
-        .UseSqlServer("Data Source=LAPTOP-OIOCJJCU\\SQLEXPRESS;Initial Catalog=AssetDb;Integrated Security=True;Encrypt=False;Trust Server Certificate=True")
+        .UseSqlServer("Data Source=DESKTOP-7GIK05C;Initial Catalog=AssetDb;Integrated Security=True;Encrypt=False;Trust Server Certificate=True")
         .Options);
 
 SeedAdmin.Initialize(context);
