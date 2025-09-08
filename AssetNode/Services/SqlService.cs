@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using Microsoft.EntityFrameworkCore.Internal;
+using AssetNode.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 
 namespace AssetNode.Services
@@ -15,11 +17,15 @@ namespace AssetNode.Services
     {
         private readonly IDbContextFactory<AssetDbContext> _dbfactory;
         private readonly AssetDbContext _db;
+        private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly ICurrentUserService _currentUser;
 
-        public SqlService(AssetDbContext db, IDbContextFactory<AssetDbContext> dbfactory)
+        public SqlService(AssetDbContext db, IDbContextFactory<AssetDbContext> dbfactory, IHubContext<NotificationHub> hubContext, ICurrentUserService currentuserservice)
         {
             _db = db;
             _dbfactory = dbfactory;
+            _hubContext = hubContext;
+            _currentUser = currentuserservice;
         }
         
         public async Task<List<AssetNodes>> GetJsonHierarchy()
@@ -120,7 +126,9 @@ namespace AssetNode.Services
             };
 
             _db.Assets.Add(newAsset);
+           
             await _db.SaveChangesAsync();
+            await _hubContext.Clients.All.SendAsync("ReceiveNotification", $"New asset added: {_currentUser.UserName ?? "System"}");
 
             return newAsset;
         }
