@@ -185,6 +185,7 @@ namespace AssetNode.Services
             }
 
             await db.SaveChangesAsync();
+            await _hubContext.Clients.All.SendAsync("ReceiveNotification", $"Asset Deleted: {_currentUser.UserName ?? "System"}");    
         }
 
         private async Task CollectChildrenAsync(AssetDbContext db, Asset node, List<Asset> result)

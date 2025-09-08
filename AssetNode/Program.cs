@@ -74,6 +74,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
            RoleClaimType = ClaimTypes.Role
        };
+       options.Events = new JwtBearerEvents
+       {
+           OnAuthenticationFailed= content =>
+           {
+               Console.WriteLine("token validation failed" + content.Exception.Message);
+               return Task.CompletedTask;
+           }
+       };
 
        options.Events = new JwtBearerEvents
        {
@@ -112,7 +120,7 @@ using (var scope = app.Services.CreateScope())
 
 using var context = new AssetDbContext(
      new DbContextOptionsBuilder<AssetDbContext>()
-       .UseSqlServer("Data Source=DESKTOP-7GIK05C;Initial Catalog=AssetDb;Integrated Security=True;Encrypt=False;Trust Server Certificate=True")
+       .UseSqlServer("Data Source=LAPTOP-OIOCJJCU\\SQLEXPRESS;Initial Catalog=AssetDb;Integrated Security=True;Encrypt=False;Trust Server Certificate=True")
        .Options);
 SeedAdmin.Initialize(context);
 
