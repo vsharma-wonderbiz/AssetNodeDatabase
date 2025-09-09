@@ -12,12 +12,14 @@ namespace AssetNode.Services
     {
         private readonly AssetDbContext _db;
         private readonly IHubContext<NotificationHub> _hubContext;
-        private readonly IHttpContextAccessor _http;
+        private readonly ICurrentUserService _http;
+        
 
-        public SignalServices(AssetDbContext db, IHubContext<NotificationHub> hubContext)
+        public SignalServices(AssetDbContext db, IHubContext<NotificationHub> hubContext,ICurrentUserService http)
         { 
             _db = db;
             _hubContext = hubContext;
+            _http = http;
         }
 
         public async Task<List<SignalNodeDto>> GetSignals()
@@ -41,7 +43,7 @@ namespace AssetNode.Services
         {
             try
             {
-              
+                var name = _db.Assets.Where(a => a.Id == dto.AssetId).Select(u => u.Name).FirstOrDefault();              
                 if (string.IsNullOrWhiteSpace(dto.SignalName))
                     throw new Exception("Signal Name cannot be empty.");
 
@@ -69,7 +71,7 @@ namespace AssetNode.Services
 
                 _db.Signals.Add(newSignal);
                 await _db.SaveChangesAsync();
-                await 
+                await _hubContext.Clients.All.SendAsync("ReceiveNotification", $"Signal added On Asset \"{name}\" by \"{_http.UserName}\"");
                 return newSignal;
             }
             catch (Exception ex)
@@ -88,6 +90,7 @@ namespace AssetNode.Services
         {
             try
             {
+                var name = _db.Assets.Where(a => a.Id == dto.AssetId).Select(u => u.Name).FirstOrDefault();
                 if (dto == null)
                     throw new Exception("Request data is required.");
 
@@ -114,12 +117,15 @@ namespace AssetNode.Services
                 if (isExist)
                     throw new Exception($"A signal named '{dto.SignalName}' already exists for asset {targetAssetId}.");
 
+                
                 signal.SignalName = dto.SignalName.Trim();
                 signal.ValueType = dto.ValueType.Trim();
                 signal.Description = string.IsNullOrWhiteSpace(dto.Description) ? signal.Description : dto.Description.Trim();
                 signal.AssetID = targetAssetId;
 
                 await _db.SaveChangesAsync();
+                await _hubContext.Clients.All.SendAsync("ReceiveNotification", $"Signal Edited with Name \"{signal.SignalName}\" in Asset \"{name}\" On Asset by \"{_http.UserName}\""
+);
                 return signal;
             }
             catch (Exception ex)
@@ -131,6 +137,8 @@ namespace AssetNode.Services
 
         public async Task<string> DeleteSignal(int id)
         {
+
+            
             if (id <= 0)
             {
                 return "Invalid signal ID";
@@ -139,6 +147,7 @@ namespace AssetNode.Services
             try
             {
                 var node = await _db.Signals.FindAsync(id);
+                var AssetNodename = _db.Assets.Where(a => a.Id == node.AssetID).Select(u => u.Name).FirstOrDefault();
                 if (node == null)
                 {
                     return "Signal not found";
@@ -146,7 +155,7 @@ namespace AssetNode.Services
 
                 _db.Signals.Remove(node);
                 await _db.SaveChangesAsync();
-
+                await _hubContext.Clients.All.SendAsync("ReceiveNotification", $"Signal Deleted \"{node.SignalName}\" in Asset \"{AssetNodename}\" On Asset by \"{_http.UserName}\"");
                 return "Signal deleted successfully";
             }
             catch (DbUpdateException ex)
