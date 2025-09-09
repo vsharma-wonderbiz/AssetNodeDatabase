@@ -1,7 +1,9 @@
-﻿using AssetNode.Interface;
+﻿using AssetNode.Hubs;
+using AssetNode.Interface;
 using AssetNode.Models.Dtos;
 using AssetNode.Models.Entities;
 using AssetNode.Services.Sql;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace AssetNode.Services
@@ -9,10 +11,13 @@ namespace AssetNode.Services
     public class SignalServices : ISignalInterface
     {
         private readonly AssetDbContext _db;
+        private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly IHttpContextAccessor _http;
 
-        public SignalServices(AssetDbContext db)
+        public SignalServices(AssetDbContext db, IHubContext<NotificationHub> hubContext)
         { 
             _db = db;
+            _hubContext = hubContext;
         }
 
         public async Task<List<SignalNodeDto>> GetSignals()
@@ -64,7 +69,7 @@ namespace AssetNode.Services
 
                 _db.Signals.Add(newSignal);
                 await _db.SaveChangesAsync();
-
+                await 
                 return newSignal;
             }
             catch (Exception ex)

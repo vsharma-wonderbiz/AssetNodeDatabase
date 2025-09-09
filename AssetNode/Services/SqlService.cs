@@ -15,24 +15,25 @@ namespace AssetNode.Services
 {
     public class SqlService :ISqlInterface
     {
-        private readonly IDbContextFactory<AssetDbContext> _dbfactory;
+        
         private readonly AssetDbContext _db;
         private readonly IHubContext<NotificationHub> _hubContext;
         private readonly ICurrentUserService _currentUser;
 
-        public SqlService(AssetDbContext db, IDbContextFactory<AssetDbContext> dbfactory, IHubContext<NotificationHub> hubContext, ICurrentUserService currentuserservice)
+        public SqlService(AssetDbContext db, IHubContext<NotificationHub> hubContext, ICurrentUserService currentuserservice)
         {
             _db = db;
-            _dbfactory = dbfactory;
+         
             _hubContext = hubContext;
             _currentUser = currentuserservice;
         }
         
         public async Task<List<AssetNodes>> GetJsonHierarchy()
         {
-            using var db = _dbfactory.CreateDbContext();
-            var allAssets = await db.Assets.ToListAsync();
-            var AllSignals = await db.Signals.ToListAsync();
+            //using var db = _dbfactory.CreateDbContext();
+            //db.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+            var allAssets = await _db.Assets.ToListAsync();
+            var AllSignals = await _db.Signals.ToListAsync();
 
             var displaydata = allAssets.Select(x => new AssetNodes
             {
@@ -138,70 +139,43 @@ namespace AssetNode.Services
 
 
 
-        //public async Task DeleteNode(int id)
-        //{
-        //    var node = await _db.Assets.FirstOrDefaultAsync(a => a.Id == id);
-        //    if (node == null)
-        //        throw new Exception($"Id {id} does not exist");
-
-        //    await RemoveChildrenAsync(node);
-        //    _db.Assets.Remove(node);
-
-        //    // Single SaveChanges call - no connection issues
-        //    await _db.SaveChangesAsync();
-        //}
-
-        //private async Task RemoveChildrenAsync(Asset node)
-        //{
-        //    var children = await _db.Assets
-        //        .Where(a => a.ParentAssetId == node.Id)
-        //        .ToListAsync();
-
-        //    foreach (var child in children)
-        //    {
-        //        await RemoveChildrenAsync(child);
-        //        _db.Assets.Remove(child);
-        //        // NO SaveChanges here - just mark for deletion
-        //    }
-        //}
-
 
         public async Task DeleteNode(int id)
         {
-            using var db = _dbfactory.CreateDbContext();
-
-            var node = await db.Assets.FirstOrDefaultAsync(a => a.Id == id);
+            var node = _db.Assets.FirstOrDefault(a => a.Id == id);
             if (node == null)
                 throw new Exception($"Id {id} does not exist");
 
             var allNodes = new List<Asset>();
-            await CollectChildrenAsync(db, node, allNodes);
+            CollectChildren(_db, node, allNodes);
             allNodes.Add(node);
 
             foreach (var asset in allNodes)
             {
-                db.Attach(asset);
-                db.Remove(asset);
+                _db.Attach(asset);
+                _db.Remove(asset);
             }
 
-            await db.SaveChangesAsync();
-            await _hubContext.Clients.All.SendAsync("ReceiveNotification", $"Asset Deleted: {_currentUser.UserName ?? "System"}");    
+            // Use synchronous SaveChanges - calls your override with the same _db instance
+            _db.SaveChanges();
+
+            // Send notification with async/await
+            await _hubContext.Clients.All.SendAsync("ReceiveNotification", $"Asset Deleted: {_currentUser.UserName ?? "System"}");
         }
 
-        private async Task CollectChildrenAsync(AssetDbContext db, Asset node, List<Asset> result)
+        private void CollectChildren(AssetDbContext db, Asset node, List<Asset> result)
         {
-            var children = await db.Assets
+            var children = db.Assets
                 .AsNoTracking()
                 .Where(a => a.ParentAssetId == node.Id)
-                .ToListAsync();
+                .ToList();
 
             foreach (var child in children)
             {
                 result.Add(child);
-                await CollectChildrenAsync(db, child, result);
+                CollectChildren(db, child, result);
             }
         }
-
 
 
 
@@ -213,7 +187,6 @@ namespace AssetNode.Services
             if (allAssets == null || !allAssets.Any())
                 return 0;
 
-            // Find root nodes (ParentAssetId == null)
             var roots = allAssets.Where(a => a.ParentAssetId == null).ToList();
 
             int totalCount = 0;
@@ -277,56 +250,7 @@ namespace AssetNode.Services
 
 
 
-        //public async Task ImportFromFile(List<FileAssetDto> fileAssets)
-        //{
-        //    // DEBUG: Print what we received
-        //    Console.WriteLine("=== RECEIVED DATA ===");
-        //    foreach (var asset in fileAssets)
-        //    {
-        //        Console.WriteLine($"TempId: {asset.TempId}, Name: {asset.Name}, TempParentId: {asset.TempParentId}");
-        //    }
-        //    Console.WriteLine("===================");
-
-        //    var tempToDbIdMap = new Dictionary<int, int>();
-
-        //    // Step 1: Insert roots first
-        //    var roots = fileAssets.Where(a => a.TempParentId == null || a.TempParentId == 0).ToList();
-        //    foreach (var root in roots)
-        //    {
-        //        var newAsset = new Asset { Name = root.Name, ParentAssetId = null };
-        //        _db.Assets.Add(newAsset);
-        //        await _db.SaveChangesAsync();
-        //        tempToDbIdMap[root.TempId] = newAsset.Id; // Map TempId -> Auto-generated DbId
-        //    }
-
-        //    // Step 2: Insert children iteratively
-        //    var remaining = fileAssets.Where(a => a.TempParentId != null && a.TempParentId != 0).ToList();
-        //    while (remaining.Any())
-        //    {
-        //        var canInsert = remaining.Where(a => tempToDbIdMap.ContainsKey(a.TempParentId.Value)).ToList();
-        //        if (!canInsert.Any()) break;
-
-        //        foreach (var asset in canInsert)
-        //        {
-        //            var parentDbId = tempToDbIdMap[asset.TempParentId.Value]; // Get correct parent DbId
-        //            Console.WriteLine($"Inserting: {asset.Name}, TempParentId: {asset.TempParentId}, MappedParentDbId: {parentDbId}");
-
-        //            var newAsset = new Asset { Name = asset.Name, ParentAssetId = parentDbId };
-        //            _db.Assets.Add(newAsset);
-        //            await _db.SaveChangesAsync();
-        //            tempToDbIdMap[asset.TempId] = newAsset.Id; // Map TempId -> Auto-generated DbId
-
-        //            Console.WriteLine($"Created asset with DbId: {newAsset.Id}, ParentAssetId: {newAsset.ParentAssetId}");
-        //        }
-
-        //        // Remove processed assets from remaining list
-        //        foreach (var processed in canInsert)
-        //        {
-        //            remaining.Remove(processed);
-        //        }
-        //    }
-        //}
-
+       
         public async Task ImportFromFile(List<FileAssetDto> fileAssets)
         {
             // DEBUG: Print received data

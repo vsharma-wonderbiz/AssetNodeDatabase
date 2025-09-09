@@ -1,4 +1,4 @@
-﻿namespace AssetNode.Interface
+﻿    namespace AssetNode.Interface
 {
     public interface ICurrentUserService
     {

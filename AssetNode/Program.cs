@@ -120,7 +120,7 @@ using (var scope = app.Services.CreateScope())
 
 using var context = new AssetDbContext(
      new DbContextOptionsBuilder<AssetDbContext>()
-       .UseSqlServer("Data Source=LAPTOP-OIOCJJCU\\SQLEXPRESS;Initial Catalog=AssetDb;Integrated Security=True;Encrypt=False;Trust Server Certificate=True")
+       .UseSqlServer("Data Source=DESKTOP-7GIK05C;Initial Catalog=AssetDb;Integrated Security=True;Encrypt=False;Trust Server Certificate=True")
        .Options);
 SeedAdmin.Initialize(context);
 
